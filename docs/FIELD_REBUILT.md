@@ -58,7 +58,7 @@ The derived positions below are produced by `createRebuiltField()` and enforced 
 5. **ALLIANCE WALL layout.** The order (OUTPOST, DS, TOWER WALL, DS, DS) follows the tag positions, but the segment widths (~72.8 in per station), wall thickness (2.5 in), top rail and shelf height are assumed. Station numbers are not shown.
 6. **CENTER LINE colour** is drawn white (not confirmed).
 7. **NEUTRAL ZONE FUEL arrangement.** The manual's figure (6.3.4.1) was not available. FUEL is packed in staggered, point-symmetric rows inside the published pool. 408 balls of 5.91 in cannot fit 71.9 in of depth in one layer, so the packed depth is 72.9 in (+1.0 in).
-8. **Venue.** ALLIANCE AREA depth (120 in), pipe-and-drape, lighting truss, audience risers and the driver eye position (0.9 m behind the wall, 1.65 m high).
+8. **Venue.** ALLIANCE AREA depth (120 in), pipe-and-drape, sideline lighting trusses and the driver eye position (0.9 m behind the wall, 1.65 m high).
 9. **AndyMark variant.** Only the field size and tag-anchored positions change; element dimensions are assumed identical to the welded field.
 
 ## Collision geometry
