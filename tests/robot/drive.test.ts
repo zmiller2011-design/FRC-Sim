@@ -17,6 +17,22 @@ describe('1. forward movement', () => {
   });
 });
 
+describe('visual synchronisation data', () => {
+  it('rolls each wheel by distance / radius and steers the snapshot with the modules', () => {
+    const sim = new Sim().run(cmd({ vx: 2 }), 2);
+    const r = DEFAULT_ROBOT.moduleHardware.wheelRadiusM;
+    for (let i = 0; i < 4; i++) expect(sim.pose.wheel[i]!).toBeCloseTo(sim.pose.x / r, 1);
+    sim.run(cmd({ vy: 1 }), 1);
+    for (let i = 0; i < 4; i++) expect(sim.pose.steer[i]!).toBeCloseTo(Math.PI / 2, 2);
+  });
+
+  it('keeps previous/current snapshots one physics step apart for interpolation', () => {
+    const sim = new Sim().run(cmd({ vx: 3 }), 2);
+    const dx = sim.robot.current.x - sim.robot.previous.x;
+    expect(dx).toBeCloseTo(sim.robot.body.vx * DT, 4);
+  });
+});
+
 describe('2. reverse movement', () => {
   it('drives backwards the same way', () => {
     const sim = new Sim().run(cmd({ vx: -3 }), 3);
@@ -134,6 +150,18 @@ describe('8. field boundary and obstacle collisions', () => {
     const sim = new Sim(fieldWorld(), undefined, 2, 2, 0).run(cmd({ vx: -MAX }), 3);
     expect(sim.pose.x - length / 2).toBeGreaterThan(-0.003);
     expect(Math.abs(sim.robot.body.vx)).toBeLessThan(0.05);
+  });
+
+  it('stays square and still while pushed against a wall (no creeping spin)', () => {
+    const sim = new Sim(fieldWorld(), undefined, 2, 2.43, 0).run(cmd({ vx: -MAX }), 6);
+    expect(Math.abs(sim.robot.body.omega)).toBeLessThan(0.005);
+    expect(Math.abs(sim.pose.heading)).toBeLessThan(0.005);
+  });
+
+  it('squares up against the wall after a crooked hit', () => {
+    const sim = new Sim(fieldWorld(), undefined, 2, 2.43, 0.15).run(cmd({ vx: -3 }), 3);
+    expect(Math.abs(sim.pose.heading)).toBeLessThan(0.02);
+    expect(Math.abs(sim.robot.body.omega)).toBeLessThan(0.02);
   });
 
   it('stays inside the guardrail at full speed and recovers', () => {

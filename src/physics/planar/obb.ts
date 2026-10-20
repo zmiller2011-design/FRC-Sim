@@ -14,13 +14,27 @@ export interface Contact {
   ny: number;
   /** Penetration depth along the normal (m), > 0 when overlapping. */
   depth: number;
-  /** Contact point in field coordinates. */
+  /** Representative contact point (deepest) in field coordinates. */
   px: number;
   py: number;
+  /**
+   * Contact manifold: up to two points (x0, y0, x1, y1). A face resting flat against a wall
+   * has two, so impulses at each corner keep the body from rotating into the wall.
+   */
+  points: Float64Array;
+  pointCount: number;
 }
 
 export function makeContact(): Contact {
-  return { nx: 0, ny: 0, depth: 0, px: 0, py: 0 };
+  return { nx: 0, ny: 0, depth: 0, px: 0, py: 0, points: new Float64Array(4), pointCount: 0 };
+}
+
+/** Adds a manifold point (ignored beyond two). */
+export function addContactPoint(c: Contact, x: number, y: number): void {
+  if (c.pointCount >= 2) return;
+  c.points[c.pointCount * 2] = x;
+  c.points[c.pointCount * 2 + 1] = y;
+  c.pointCount++;
 }
 
 const cornersA = new Float64Array(8);
@@ -94,9 +108,8 @@ export function collideObb(body: Obb, obstacle: Obb, out: Contact): boolean {
   out.ny = bny;
   out.depth = best;
 
-  // Contact point: the body corners inside the obstacle (averaged when a whole face is in
-  // contact, so flat pushes don't create spurious spin), else the obstacle corner deepest
-  // into the body, else the midpoint between the centres.
+  // Manifold: the body corners inside the obstacle (both, when a whole face is in contact),
+  // else the obstacle corners inside the body, else the midpoint between the centres.
   obbCorners(body, cornersA);
   obbCorners(obstacle, cornersB);
   let found = false;
@@ -106,43 +119,42 @@ export function collideObb(body: Obb, obstacle: Obb, out: Contact): boolean {
     const py = cornersA[i * 2 + 1]!;
     if (inside(obstacle, px, py, 1e-6)) deepest = Math.min(deepest, px * bnx + py * bny);
   }
+  out.pointCount = 0;
   if (deepest !== Infinity) {
-    let sx = 0;
-    let sy = 0;
-    let count = 0;
     for (let i = 0; i < 4; i++) {
       const px = cornersA[i * 2]!;
       const py = cornersA[i * 2 + 1]!;
-      if (
-        inside(obstacle, px, py, FACE_TOLERANCE) &&
-        px * bnx + py * bny <= deepest + FACE_TOLERANCE
-      ) {
-        sx += px;
-        sy += py;
-        count++;
+      const along = px * bnx + py * bny;
+      if (inside(obstacle, px, py, FACE_TOLERANCE) && along <= deepest + FACE_TOLERANCE) {
+        if (out.pointCount === 0 || along < out.px * bnx + out.py * bny) {
+          out.px = px;
+          out.py = py;
+        }
+        addContactPoint(out, px, py);
       }
     }
-    out.px = sx / count;
-    out.py = sy / count;
-    found = true;
+    found = out.pointCount > 0;
   }
   if (!found) {
     let highest = -Infinity;
     for (let i = 0; i < 4; i++) {
       const px = cornersB[i * 2]!;
       const py = cornersB[i * 2 + 1]!;
+      if (!inside(body, px, py, 1e-6)) continue;
+      addContactPoint(out, px, py);
       const along = px * bnx + py * bny;
-      if (along > highest && inside(body, px, py, 1e-6)) {
+      if (along > highest) {
         highest = along;
         out.px = px;
         out.py = py;
-        found = true;
       }
+      found = true;
     }
   }
   if (!found) {
     out.px = (body.cx + obstacle.cx) / 2;
     out.py = (body.cy + obstacle.cy) / 2;
+    addContactPoint(out, out.px, out.py);
   }
   return true;
 }

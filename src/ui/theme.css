@@ -675,7 +675,7 @@ p {
   position: absolute;
   top: 12px;
   right: 12px;
-  width: 330px;
+  width: 380px;
   max-height: calc(100% - 48px);
   overflow-y: auto;
   padding: 10px 12px 10px;
@@ -733,7 +733,7 @@ p {
 }
 .telemetry__rows div {
   display: grid;
-  grid-template-columns: 74px 1fr;
+  grid-template-columns: 84px 1fr;
 }
 .telemetry__rows dt {
   color: var(--text-muted);
@@ -813,6 +813,6 @@ p {
 }
 @media (max-width: 860px) {
   .telemetry {
-    width: min(330px, calc(100% - 24px));
+    width: min(380px, calc(100% - 24px));
   }
 }

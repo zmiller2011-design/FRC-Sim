@@ -7,7 +7,7 @@ import { loadSettings, saveSettings } from './persistence';
 export type Screen = 'menu' | 'sandbox';
 
 /** Mirrors the engine's camera mode ids (state may not import from the engine). */
-export type CameraView = 'orbit' | 'overhead' | 'blueStation' | 'redStation';
+export type CameraView = 'orbit' | 'overhead' | 'blueStation' | 'redStation' | 'follow';
 
 export interface UiState {
   screen: Screen;

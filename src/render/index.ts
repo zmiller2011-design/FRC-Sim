@@ -1,6 +1,7 @@
 export * from './cameras/CameraManager';
 export * from './cameras/CameraMode';
 export * from './cameras/modes/DriverStationCameraMode';
+export * from './cameras/modes/FollowCameraMode';
 export * from './cameras/modes/OrbitCameraMode';
 export * from './cameras/modes/OverheadCameraMode';
 export * from './field/FieldView';

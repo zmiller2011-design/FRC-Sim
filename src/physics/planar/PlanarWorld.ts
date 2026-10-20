@@ -1,4 +1,11 @@
-import { type Contact, collideObb, makeContact, type Obb, obbCorners } from './obb';
+import {
+  addContactPoint,
+  type Contact,
+  collideObb,
+  makeContact,
+  type Obb,
+  obbCorners,
+} from './obb';
 import type { RigidBody2D } from './RigidBody2D';
 import { type Ramp, sampleTerrain, type TerrainSample } from './terrain';
 
@@ -85,9 +92,9 @@ export class PlanarWorld {
   }
 
   /**
-   * Handles the side of the bounds rectangle the body penetrates most. The contact point is
-   * the average of the corners past that side, so a robot pushed flat against a wall gets a
-   * centred impulse instead of rocking between corners.
+   * Handles the side of the bounds rectangle the body penetrates most. Every corner at (or
+   * within 1 cm of) that side becomes a manifold point, so a robot pushed flat against a wall
+   * is supported at both corners and any rotation meets a restoring reaction.
    */
   private resolveBounds(body: RigidBody2D): boolean {
     const { minX, maxX, minY, maxY } = this.options.bounds;
@@ -111,22 +118,19 @@ export class PlanarWorld {
     c.nx = normal[0];
     c.ny = normal[1];
     c.depth = depth;
-    let sx = 0;
-    let sy = 0;
-    let count = 0;
+    c.pointCount = 0;
     for (let i = 0; i < 4; i++) {
       const px = this.corners[i * 2]!;
       const py = this.corners[i * 2 + 1]!;
-      const d =
-        side === 0 ? minX - px : side === 1 ? px - maxX : side === 2 ? minY - py : py - maxY;
+      const d = sideDepth(side, px, py, minX, maxX, minY, maxY);
       if (d >= depth - FACE_TOLERANCE) {
-        sx += px;
-        sy += py;
-        count++;
+        if (d >= depth) {
+          c.px = px;
+          c.py = py;
+        }
+        addContactPoint(c, px, py);
       }
     }
-    c.px = sx / count;
-    c.py = sy / count;
     this.applyContact(body, c);
     return true;
   }
@@ -136,12 +140,26 @@ export class PlanarWorld {
     const push = Math.max(c.depth - SLOP, 0) + SLOP * 0.5;
     body.x += c.nx * push;
     body.y += c.ny * push;
+    // Velocity impulses. With a two-point manifold, first resolve at the midpoint (exact and
+    // spin-free for a square push), then at each corner still approaching, which supplies
+    // the restoring torque when the body is rotating into the surface.
+    if (c.pointCount === 2) {
+      this.applyPointImpulse(
+        body,
+        c,
+        (c.points[0]! + c.points[2]!) / 2,
+        (c.points[1]! + c.points[3]!) / 2,
+      );
+    }
+    for (let k = 0; k < c.pointCount; k++) {
+      this.applyPointImpulse(body, c, c.points[k * 2]!, c.points[k * 2 + 1]!);
+    }
+  }
 
-    const rx = c.px - body.x;
-    const ry = c.py - body.y;
-    const vx = body.pointVelocityX(ry);
-    const vy = body.pointVelocityY(rx);
-    const vn = vx * c.nx + vy * c.ny;
+  private applyPointImpulse(body: RigidBody2D, c: Contact, px: number, py: number): void {
+    const rx = px - body.x;
+    const ry = py - body.y;
+    const vn = body.pointVelocityX(ry) * c.nx + body.pointVelocityY(rx) * c.ny;
     if (vn >= 0) return;
     // Resting contact (slow approach) gets no bounce so a robot pushing a wall stays still.
     const e = vn < -BOUNCE_THRESHOLD ? this.options.restitution : 0;

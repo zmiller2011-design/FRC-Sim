@@ -1,7 +1,7 @@
 import type { PerspectiveCamera } from 'three';
 import type { Disposable } from '@/core';
 
-export type CameraModeId = 'orbit' | 'overhead' | 'blueStation' | 'redStation';
+export type CameraModeId = 'orbit' | 'overhead' | 'blueStation' | 'redStation' | 'follow';
 
 export interface CameraContext {
   readonly camera: PerspectiveCamera;

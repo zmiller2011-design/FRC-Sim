@@ -14,6 +14,7 @@ import {
   CameraManager,
   type CameraModeId,
   DriverStationCameraMode,
+  FollowCameraMode,
   type GpuInfo,
   OrbitCameraMode,
   OverheadCameraMode,
@@ -156,6 +157,8 @@ export class Engine implements Disposable {
     this.robot = this.scope.add(
       new RobotRuntime(this.scenes.world, this.scheduler, this.field.config, this.settings.driving),
     );
+    const robotView = this.robot.view;
+    this.cameras.register(new FollowCameraMode(() => robotView.drawnPose));
   }
 
   getSettings(): Readonly<Settings> {

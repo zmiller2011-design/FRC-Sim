@@ -7,7 +7,7 @@ import {
   MeshStandardMaterial,
   type Object3D,
 } from 'three';
-import { type Disposable, lerp, lerpAngle } from '@/core';
+import { type Disposable, lerp, lerpAngle, type Pose2d } from '@/core';
 import type { RobotRenderState } from '@/robot/Robot';
 import { ALLIANCE_COLORS } from '../field/FieldMaterials';
 import { FIELD_TO_WORLD } from '../field/fieldSpace';
@@ -28,6 +28,8 @@ const RAIL = 1 * IN;
 const RAIL_HEIGHT = 2 * IN;
 const FRAME_Z = 1.75 * IN;
 const WHEEL_WIDTH = 1.5 * IN;
+/** Size of the open square left in the belly pan at each module (m). */
+const MODULE_OPENING = 0.16;
 
 /**
  * Visual swerve robot. Everything is built once from shared geometries and materials and
@@ -36,6 +38,8 @@ const WHEEL_WIDTH = 1.5 * IN;
  */
 export class RobotView implements Disposable {
   readonly root = new Group();
+  /** The robot pose as last drawn (interpolated), for cameras that follow it. */
+  readonly drawnPose: Pose2d = { x: 0, y: 0, heading: 0 };
   private readonly chassis = new Group();
   private readonly steerGroups: Group[] = [];
   private readonly wheelGroups: Group[] = [];
@@ -111,7 +115,12 @@ export class RobotView implements Disposable {
     add(aluminum, 0, W / 2 - RAIL / 2, rz, L, RAIL, RAIL_HEIGHT);
     add(aluminum, 0, -W / 2 + RAIL / 2, rz, L, RAIL, RAIL_HEIGHT);
     add(aluminum, 0, 0, rz, RAIL, W, RAIL_HEIGHT);
-    add(pan, 0, 0, FRAME_Z + 0.002, L - 2 * RAIL, W - 2 * RAIL, 0.004);
+    // Belly pan with the corners left open so the swerve wheels are visible from above.
+    const open = MODULE_OPENING;
+    add(pan, 0, 0, FRAME_Z + 0.002, L - 2 * RAIL, W - 2 * open, 0.004);
+    for (const side of [-1, 1]) {
+      add(pan, 0, side * (W / 2 - open / 2), FRAME_Z + 0.002, L - 2 * open, open - RAIL, 0.004);
+    }
 
     // Battery and electronics on the belly pan, and a heading arrow on top.
     add(battery, -L * 0.18, 0, FRAME_Z + 0.004 + 0.085, 0.18, 0.08, 0.17);
@@ -130,14 +139,20 @@ export class RobotView implements Disposable {
       module.position.set(p.x, p.y, o.wheelRadius);
       this.chassis.add(module);
 
-      const housing = new Mesh(this.box, dark);
-      housing.scale.set(0.11, 0.11, 0.012);
-      housing.position.z = FRAME_Z + RAIL_HEIGHT - o.wheelRadius + 0.006;
-      module.add(housing);
+      // Open module frame (two bars) with the steering motor on one side, so the wheel
+      // stays visible from above.
+      const topZ = FRAME_Z + RAIL_HEIGHT - o.wheelRadius + 0.004;
+      for (const side of [-1, 1]) {
+        const bar = new Mesh(this.box, dark);
+        bar.scale.set(0.012, 0.11, 0.008);
+        bar.position.set(side * 0.05, 0, topZ);
+        bar.castShadow = true;
+        module.add(bar);
+      }
       const motor = new Mesh(this.motorGeometry, aluminum);
-      motor.scale.set(0.06, 0.08, 0.06);
+      motor.scale.set(0.05, 0.07, 0.05);
       motor.rotation.x = Math.PI / 2;
-      motor.position.set(0.025, 0.025, housing.position.z + 0.046);
+      motor.position.set(-0.05, 0.04, topZ + 0.04);
       module.add(motor);
 
       const steer = new Group();
@@ -181,6 +196,9 @@ export class RobotView implements Disposable {
       lerp(previous.pitch, current.pitch, alpha),
       lerpAngle(previous.heading, current.heading, alpha),
     );
+    this.drawnPose.x = this.chassis.position.x;
+    this.drawnPose.y = this.chassis.position.y;
+    this.drawnPose.heading = this.chassis.rotation.z;
     for (let i = 0; i < this.steerGroups.length; i++) {
       // Steering and wheel angles are continuous (unwrapped), so plain lerp is correct.
       this.steerGroups[i]!.rotation.z = lerp(previous.steer[i]!, current.steer[i]!, alpha);

@@ -12,6 +12,7 @@ const VIEWS: readonly { id: CameraView; label: string; key: string }[] = [
   { id: 'overhead', label: 'Overhead', key: 'Digit2' },
   { id: 'blueStation', label: 'Blue DS', key: 'Digit3' },
   { id: 'redStation', label: 'Red DS', key: 'Digit4' },
+  { id: 'follow', label: 'Follow', key: 'Digit5' },
 ];
 
 function togglePause(): void {
@@ -56,6 +57,7 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
   useHotkey('Digit2', setView('overhead'));
   useHotkey('Digit3', setView('blueStation'));
   useHotkey('Digit4', setView('redStation'));
+  useHotkey('Digit5', setView('follow'));
   useHotkey('KeyF', toggleFieldRelative);
   useHotkey('KeyT', toggleTelemetry);
   useHotkey('KeyR', () => engine.resetRobot());

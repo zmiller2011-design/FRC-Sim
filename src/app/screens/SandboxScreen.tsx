@@ -14,11 +14,12 @@ const HINTS = {
   overhead: 'Drag to pan · Scroll to zoom',
   blueStation: 'Drag to look around',
   redStation: 'Drag to look around',
+  follow: 'Camera follows the robot',
 } as const;
 
 function ViewportHint() {
   const view = useUiStore((s) => s.cameraView);
-  return <p className="viewport-hint">WASD/QE drive · {HINTS[view]} · Views 1–4</p>;
+  return <p className="viewport-hint">WASD/QE drive · {HINTS[view]} · Views 1–5</p>;
 }
 
 /**

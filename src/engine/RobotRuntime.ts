@@ -29,7 +29,7 @@ const SPAWN_RIGHT_OF_CENTRE_M = 1.6;
  */
 export class RobotRuntime implements Disposable {
   readonly robot: Robot;
-  private readonly view: RobotView;
+  readonly view: RobotView;
   private readonly input: DriverInput;
   private readonly controller: HumanDriveController;
   private readonly axes = makeDriverAxes();
