@@ -634,6 +634,12 @@ p {
 /* ==========================================================================
    Narrow screens: panel overlays the viewport, secondary labels hide.
    ========================================================================== */
+@media (max-width: 1180px) {
+  .topbar__label,
+  .topbar__speed {
+    display: none;
+  }
+}
 @media (max-width: 860px) {
   .shell__panel {
     position: absolute;
@@ -648,12 +654,12 @@ p {
   .topbar__divider,
   .viewport-hint,
   .statusbar__gpu,
+  .statusbar__field,
   .statusbar__preset {
     display: none;
   }
 }
 @media (max-width: 600px) {
-  .segmented,
   .topbar__title {
     display: none;
   }

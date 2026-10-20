@@ -18,13 +18,15 @@ npm run build      # production build into dist/
 
 ## Current state
 
-Stages 0 and 1 are in place: the fixed-timestep engine loop and the rendering foundation
-(renderer, scene manager, camera, graphics settings, loading and error screens, diagnostics).
-The sandbox shows a measuring floor and a test body driven by the 200 Hz simulation.
-Physics, robots and game rules come next.
+Stages 0–2 are in place: the fixed-timestep engine, the rendering foundation and a complete
+2026 REBUILT field (welded and AndyMark variants) built from the official AprilTag layout and
+published dimensions. See [docs/FIELD_REBUILT.md](docs/FIELD_REBUILT.md) for sources, scale and
+validation. Physics, robots and game rules come next.
 
 | Control                    | Action                                                          |
 | -------------------------- | --------------------------------------------------------------- |
-| Drag / right-drag / scroll | Orbit / pan / zoom                                              |
+| `1` / `2` / `3` / `4`      | Orbit, overhead, blue driver station, red driver station        |
+| Drag / right-drag / scroll | Orbit / pan / zoom (orbit view); pan / zoom (overhead)          |
 | `P`                        | Pause or resume                                                 |
 | `` ` ``                    | Toggle the diagnostics overlay (on by default in `npm run dev`) |
+| Reset field                | Return all 504 FUEL to their starting positions                 |

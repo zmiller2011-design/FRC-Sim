@@ -1,9 +1,16 @@
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Vec3 } from '@/core';
-import type { CameraContext, CameraMode } from '../CameraMode';
+import type { CameraContext, CameraMode, FieldBounds } from '../CameraMode';
 
-/** Free camera that orbits a target point. Drag to rotate, right-drag to pan, wheel to zoom. */
+const BOUNDS_MARGIN = 3;
+const MIN_HEIGHT = 0.25;
+
+/**
+ * Free perspective camera orbiting a target. Drag to rotate, right-drag to pan, scroll to zoom.
+ * The target is kept over the field (plus a margin) and the camera above the carpet, so the
+ * view can't be lost under the floor or far off the field.
+ */
 export class OrbitCameraMode implements CameraMode {
   readonly id = 'orbit';
   private controls: OrbitControls | null = null;
@@ -11,10 +18,16 @@ export class OrbitCameraMode implements CameraMode {
   private readonly defaultTarget: Vector3;
   private readonly defaultOffset: Vector3;
   private readonly target: Vector3;
+  /** Camera position while this mode was last active; other modes move the shared camera. */
+  private readonly position = new Vector3();
   private hasPose = false;
 
-  /** Both vectors are in world coordinates. */
-  constructor(target: Vec3, initialOffset: Vec3) {
+  /** Target and offset are in world coordinates. */
+  constructor(
+    target: Vec3,
+    initialOffset: Vec3,
+    private readonly bounds: FieldBounds | null = null,
+  ) {
     this.defaultTarget = new Vector3(target.x, target.y, target.z);
     this.defaultOffset = new Vector3(initialOffset.x, initialOffset.y, initialOffset.z);
     this.target = this.defaultTarget.clone();
@@ -23,23 +36,41 @@ export class OrbitCameraMode implements CameraMode {
   activate(ctx: CameraContext): void {
     this.deactivate();
     this.camera = ctx.camera;
+    ctx.camera.up.set(0, 1, 0);
     if (!this.hasPose) {
-      ctx.camera.position.copy(this.target).add(this.defaultOffset);
+      this.position.copy(this.target).add(this.defaultOffset);
       this.hasPose = true;
     }
+    ctx.camera.position.copy(this.position);
     const controls = new OrbitControls(ctx.camera, ctx.domElement);
     controls.target.copy(this.target);
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.minDistance = 1.5;
-    controls.maxDistance = 30;
+    controls.maxDistance = 32;
     controls.maxPolarAngle = Math.PI * 0.48;
+    controls.screenSpacePanning = false;
     controls.update();
     this.controls = controls;
   }
 
   update(): void {
-    this.controls?.update();
+    const controls = this.controls;
+    if (!controls) return;
+    if (this.bounds) {
+      const t = controls.target;
+      t.x = Math.min(
+        Math.max(t.x, this.bounds.minX - BOUNDS_MARGIN),
+        this.bounds.maxX + BOUNDS_MARGIN,
+      );
+      t.z = Math.min(
+        Math.max(t.z, this.bounds.minZ - BOUNDS_MARGIN),
+        this.bounds.maxZ + BOUNDS_MARGIN,
+      );
+      t.y = Math.min(Math.max(t.y, 0), 3);
+    }
+    controls.update();
+    if (this.camera && this.camera.position.y < MIN_HEIGHT) this.camera.position.y = MIN_HEIGHT;
   }
 
   reset(): void {
@@ -58,6 +89,7 @@ export class OrbitCameraMode implements CameraMode {
   deactivate(): void {
     if (!this.controls) return;
     this.target.copy(this.controls.target);
+    if (this.camera) this.position.copy(this.camera.position);
     this.controls.dispose();
     this.controls = null;
   }

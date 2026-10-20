@@ -31,10 +31,20 @@ export interface InterfaceSettings {
   telemetryHz: number;
 }
 
+export type FieldVariant = 'welded' | 'andymark';
+
+export interface FieldSettings {
+  /** Official field construction to model; the two differ by a few centimetres. */
+  variant: FieldVariant;
+  /** Draw the simplified collision shapes as a wireframe overlay. */
+  showColliders: boolean;
+}
+
 export interface Settings {
   graphics: GraphicsSettings;
   simulation: SimulationSettings;
   interface: InterfaceSettings;
+  field: FieldSettings;
 }
 
 export type SettingsPatch = {
@@ -63,6 +73,10 @@ export const DEFAULT_SETTINGS: Settings = {
     showPerfOverlay: IS_DEV,
     telemetryHz: 10,
   },
+  field: {
+    variant: 'welded',
+    showColliders: false,
+  },
 };
 
 const LIMITS = {
@@ -86,6 +100,7 @@ export function mergeSettings(base: Settings, patch: SettingsPatch): Settings {
   const g = { ...base.graphics, ...patch.graphics };
   const s = { ...base.simulation, ...patch.simulation };
   const i = { ...base.interface, ...patch.interface };
+  const f = { ...base.field, ...patch.field };
   return {
     graphics: {
       ...g,
@@ -105,6 +120,10 @@ export function mergeSettings(base: Settings, patch: SettingsPatch): Settings {
     interface: {
       ...i,
       telemetryHz: clampSetting('telemetryHz', i.telemetryHz, base.interface.telemetryHz),
+    },
+    field: {
+      variant: f.variant === 'andymark' ? 'andymark' : 'welded',
+      showColliders: f.showColliders === true,
     },
   };
 }

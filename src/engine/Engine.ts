@@ -5,29 +5,38 @@ import {
   EventBus,
   FixedStepper,
   type FrameDriver,
-  pose2d,
+  fieldToWorld,
   vec3,
 } from '@/core';
+import { rebuiltAnchors } from '@/game/seasons/rebuilt2026';
 import {
   assertWebGL2,
   CameraManager,
   type CameraModeId,
+  DriverStationCameraMode,
   type GpuInfo,
   OrbitCameraMode,
+  OverheadCameraMode,
   Renderer,
   SceneManager,
-  TestBodyView,
 } from '@/render';
 import { mergeSettings, type Settings, type SettingsPatch } from '@/settings';
 import type { PerfSample, RenderStatus } from '@/state';
+import { type FieldInfo, FieldRuntime } from './FieldRuntime';
 import { PerfMonitor } from './PerfMonitor';
-import { TestBodySim } from './sandbox/TestBodySim';
 import { SystemScheduler } from './SystemScheduler';
+
+/** Driver eye position: behind the wall at standing height. [APPROX] */
+const DRIVER_EYE = { behindWallM: 0.9, heightM: 1.65 };
+/** Default orbit view: above and behind the blue alliance's right corner. */
+const ORBIT_OFFSET = { x: -9, y: 9.5, z: 11 };
 
 export interface EngineEvents {
   /** Published at `interface.telemetryHz`. The object is reused: copy it if you keep it. */
   perf: Readonly<PerfSample>;
   renderStatus: RenderStatus;
+  /** The field was built or rebuilt (variant change). */
+  field: FieldInfo;
 }
 
 export interface EngineOptions {
@@ -61,6 +70,7 @@ export class Engine implements Disposable {
   private readonly renderer: Renderer;
   private readonly scenes: SceneManager;
   private readonly cameras: CameraManager;
+  private readonly field: FieldRuntime;
   private readonly scheduler: SystemScheduler;
   private readonly stepper: FixedStepper;
   private readonly driver: FrameDriver;
@@ -86,10 +96,6 @@ export class Engine implements Disposable {
   private timeScale = 1;
   private mounted = false;
 
-  // Rendering-foundation test content; replaced by robots in stage 4.
-  private readonly testBody: TestBodySim;
-  private readonly interpolatedPose = pose2d();
-
   /**
    * Checks WebGL support, then builds every system. Rejects with a `RenderInitError`
    * describing what went wrong when 3D graphics are unavailable.
@@ -102,12 +108,21 @@ export class Engine implements Disposable {
 
   private constructor(options: EngineOptions) {
     this.settings = options.settings;
-    const { graphics, simulation, interface: ui } = this.settings;
+    const { graphics, simulation, interface: ui, field } = this.settings;
 
     try {
       this.driver = this.scope.add(options.frameDriver ?? new AnimationFrameDriver());
       this.renderer = this.scope.add(new Renderer(graphics));
-      this.scenes = this.scope.add(new SceneManager(graphics));
+      const anchors = rebuiltAnchors(field.variant);
+      this.scenes = this.scope.add(
+        new SceneManager(graphics, {
+          center: { x: anchors.lengthM / 2, z: -anchors.widthM / 2 },
+          shadowExtentM: 11.5,
+        }),
+      );
+      this.scenes.setEnvironment(this.renderer.createEnvironment());
+      this.field = this.scope.add(new FieldRuntime(this.scenes.world, field.variant));
+      this.field.setCollidersVisible(field.showColliders);
       this.cameras = this.scope.add(new CameraManager());
     } catch (error) {
       // Release whatever was created before the failure, then surface the original error.
@@ -123,22 +138,17 @@ export class Engine implements Disposable {
     this.scope.defer(() => this.scheduler.clear());
     this.scope.defer(() => this.events.clear());
 
-    // World coordinates: the field-frame origin is the world origin (see core/math/frames.ts).
-    this.cameras.register(new OrbitCameraMode(vec3(0, 0, 0), vec3(-5, 4.5, 6.5)));
+    this.registerCameras();
     this.cameras.setMode('orbit');
     this.scope.defer(this.renderer.onResize(() => this.cameras.setAspect(this.renderer.aspect)));
     this.scope.defer(
-      this.renderer.onStatusChange((status) => this.events.emit('renderStatus', status)),
+      this.renderer.onStatusChange((status) => {
+        // A restored context has lost its GPU-side environment map.
+        if (status === 'ok') this.scenes.setEnvironment(this.renderer.createEnvironment());
+        this.events.emit('renderStatus', status);
+      }),
     );
-
-    // The test body drives a figure-eight centred on the origin.
-    this.testBody = new TestBodySim(0, 0);
-    const testBodyView = this.scenes.addView(new TestBodyView(this.scenes.world));
-    this.scheduler.addFixed('physics', this.testBody);
-    this.scheduler.addRender({
-      name: 'testBodyView',
-      sync: (alpha) => testBodyView.sync(this.testBody.pose.sample(alpha, this.interpolatedPose)),
-    });
+    this.scheduler.addRender({ name: 'field', sync: () => this.field.sync() });
   }
 
   getSettings(): Readonly<Settings> {
@@ -155,6 +165,14 @@ export class Engine implements Disposable {
 
   get renderStatus(): RenderStatus {
     return this.renderer.currentStatus;
+  }
+
+  get fieldInfo(): FieldInfo {
+    return this.field.info;
+  }
+
+  get cameraMode(): CameraModeId | null {
+    return this.cameras.activeId;
   }
 
   /** Recent frame times for diagnostics. The buffer is live: read it, don't keep it. */
@@ -194,22 +212,86 @@ export class Engine implements Disposable {
     this.cameras.resetActive();
   }
 
+  /** Restores every game piece to the official starting configuration. */
+  resetField(): void {
+    this.field.reset();
+  }
+
   applySettings(patch: SettingsPatch): void {
     this.settings = mergeSettings(this.settings, patch);
-    const { graphics, simulation, interface: ui } = this.settings;
+    const { graphics, simulation, interface: ui, field } = this.settings;
 
-    if (this.renderer.applyGraphics(graphics) && this.mounted) {
-      this.cameras.attach(this.renderer.canvas);
+    if (this.renderer.applyGraphics(graphics)) {
+      // New WebGL context: GPU-side resources such as the environment map must be rebuilt.
+      this.scenes.setEnvironment(this.renderer.createEnvironment());
+      if (this.mounted) this.cameras.attach(this.renderer.canvas);
     }
     this.scenes.applyGraphics(graphics);
     this.stepper.configure({ stepHz: simulation.physicsHz, maxSubSteps: simulation.maxSubSteps });
     this.scheduler.setLogicDivisor(simulation.logicDivisor);
     this.perf.setPublishHz(ui.telemetryHz);
+
+    if (this.field.setVariant(field.variant)) {
+      const mode = this.cameras.activeId ?? 'orbit';
+      this.registerCameras();
+      this.cameras.setMode(mode);
+      this.scenes.applyGraphics(graphics);
+      this.events.emit('field', this.field.info);
+    }
+    this.field.setCollidersVisible(field.showColliders);
   }
 
   dispose(): void {
     this.unmount();
     this.scope.dispose();
+  }
+
+  /** (Re)creates camera modes framed on the current field. */
+  private registerCameras(): void {
+    const { lengthM: L, widthM: W } = this.field.config;
+    const bounds = this.field.bounds;
+    const center = fieldToWorld(L / 2, W / 2, 0, vec3());
+    this.cameras.register(
+      new OrbitCameraMode(center, vec3(ORBIT_OFFSET.x, ORBIT_OFFSET.y, ORBIT_OFFSET.z), bounds),
+    );
+    this.cameras.register(new OverheadCameraMode(bounds));
+    const lookAt = fieldToWorld(L / 2, W / 2, 0.3, vec3());
+    // Stand at the DRIVER STATION nearest the centre (the wall centre is behind the TOWER).
+    const stationY = this.centralDriverStationY();
+    this.cameras.register(
+      new DriverStationCameraMode(
+        'blueStation',
+        fieldToWorld(-DRIVER_EYE.behindWallM, stationY, DRIVER_EYE.heightM, vec3()),
+        lookAt,
+      ),
+    );
+    this.cameras.register(
+      new DriverStationCameraMode(
+        'redStation',
+        fieldToWorld(L + DRIVER_EYE.behindWallM, W - stationY, DRIVER_EYE.heightM, vec3()),
+        lookAt,
+      ),
+    );
+  }
+
+  /** Field Y of the blue DRIVER STATION closest to the field centreline. */
+  private centralDriverStationY(): number {
+    const W = this.field.config.widthM;
+    const wall = this.field.config.elements.find(
+      (e) => e.type === 'allianceWall' && e.alliance === 'blue',
+    );
+    if (wall?.type !== 'allianceWall') return W / 2;
+    let best = W / 2;
+    let bestDistance = Infinity;
+    for (const seg of wall.dims.segments) {
+      if (seg.kind !== 'driverStation') continue;
+      const mid = (seg.from + seg.to) / 2;
+      if (Math.abs(mid - W / 2) < bestDistance) {
+        bestDistance = Math.abs(mid - W / 2);
+        best = mid;
+      }
+    }
+    return best;
   }
 
   private readonly runStep = (dt: number, tick: number): void => {

@@ -8,6 +8,18 @@ import { SettingsPanel } from '@/ui/settings/SettingsPanel';
 import { Viewport } from '@/ui/common/Viewport';
 import { useEngine } from '../engineContext';
 
+const HINTS = {
+  orbit: 'Drag to orbit · Right-drag to pan · Scroll to zoom',
+  overhead: 'Drag to pan · Scroll to zoom',
+  blueStation: 'Drag to look around',
+  redStation: 'Drag to look around',
+} as const;
+
+function ViewportHint() {
+  const view = useUiStore((s) => s.cameraView);
+  return <p className="viewport-hint">{HINTS[view]} · Views 1–4</p>;
+}
+
 /**
  * Simulator shell: top bar, central viewport, collapsible settings panel, status bar.
  * Re-renders only when the panel is toggled or the overlay setting changes; per-frame
@@ -24,7 +36,7 @@ export function SandboxScreen() {
     <div className="shell">
       <TopBar
         engine={engine}
-        title="Sandbox"
+        title="REBUILT Field"
         panelOpen={panelOpen}
         onTogglePanel={() => setPanelOpen((open) => !open)}
       />
@@ -33,7 +45,7 @@ export function SandboxScreen() {
           <Viewport engine={engine} />
           {showPerf && <PerfOverlay engine={engine} />}
           <ContextLostOverlay />
-          <p className="viewport-hint">Drag to orbit · Right-drag to pan · Scroll to zoom</p>
+          <ViewportHint />
         </div>
         {panelOpen && (
           <aside className="shell__panel" aria-label="Settings">

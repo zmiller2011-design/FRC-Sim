@@ -4,13 +4,16 @@ import type { CameraContext, CameraMode, CameraModeId } from './CameraMode';
 
 /** Owns the single render camera and switches between camera modes. */
 export class CameraManager implements Disposable {
-  readonly camera = new PerspectiveCamera(55, 1, 0.05, 200);
+  readonly camera = new PerspectiveCamera(50, 1, 0.1, 160);
   private readonly modes = new Map<CameraModeId, CameraMode>();
   private active: CameraMode | null = null;
   private domElement: HTMLElement | null = null;
 
+  /** Adds a mode, replacing (and disposing) any existing mode with the same id. */
   register(mode: CameraMode): void {
-    this.modes.get(mode.id)?.dispose();
+    const existing = this.modes.get(mode.id);
+    if (existing === this.active) this.active = null;
+    existing?.dispose();
     this.modes.set(mode.id, mode);
   }
 

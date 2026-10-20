@@ -2,10 +2,13 @@ import {
   ACESFilmicToneMapping,
   type Camera,
   PCFShadowMap,
+  PMREMGenerator,
   type Scene,
   SRGBColorSpace,
+  type Texture,
   WebGLRenderer,
 } from 'three';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import type { Disposable } from '@/core';
 import { effectivePixelRatio, type GraphicsSettings } from '@/settings';
 import { type GpuInfo, readGpuInfo, RenderInitError } from './webglSupport';
@@ -120,6 +123,19 @@ export class Renderer implements Disposable {
   render(scene: Scene, camera: Camera): void {
     if (!this.container || this.status !== 'ok') return;
     this.webgl.render(scene, camera);
+  }
+
+  /**
+   * Prefiltered indoor environment for image-based lighting. Generated once on the GPU;
+   * must be regenerated after the context is recreated or restored.
+   */
+  createEnvironment(): Texture {
+    const generator = new PMREMGenerator(this.webgl);
+    const room = new RoomEnvironment();
+    const target = generator.fromScene(room, 0.04);
+    room.dispose();
+    generator.dispose();
+    return target.texture;
   }
 
   readStats(out: RenderStats): RenderStats {

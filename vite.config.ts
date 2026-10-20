@@ -10,8 +10,8 @@ export default defineConfig({
   build: {
     target: 'es2022',
     sourcemap: true,
-    // Three.js alone is ~550 kB minified (~140 kB gzipped) and cannot be split further.
-    chunkSizeWarningLimit: 600,
+    // Three.js plus the example modules we use is ~610 kB minified (~155 kB gzipped).
+    chunkSizeWarningLimit: 650,
     rolldownOptions: {
       output: {
         // Vendor chunks change rarely, so browsers keep them cached across our releases.

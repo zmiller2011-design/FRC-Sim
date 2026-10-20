@@ -7,8 +7,14 @@ function shortGpuName(name: string): string {
   return (angle?.[1] ?? name).trim();
 }
 
+function fieldLabel(engine: Engine): string {
+  const f = engine.fieldInfo;
+  return `${f.season} ${f.gameName} · ${f.variantLabel} · ${f.lengthM.toFixed(3)} × ${f.widthM.toFixed(3)} m`;
+}
+
 /** Live numbers update at the telemetry rate (10 Hz), re-rendering only this bar. */
 export function StatusBar({ engine }: { engine: Engine }) {
+  const variant = useUiStore((s) => s.settings.field.variant);
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
   const renderStatus = useUiStore((s) => s.renderStatus);
@@ -32,6 +38,9 @@ export function StatusBar({ engine }: { engine: Engine }) {
         </span>
       </div>
       <div className="statusbar__group">
+        <span className="statusbar__item statusbar__field" title={`${variant} field`}>
+          {fieldLabel(engine)}
+        </span>
         {perf && (
           <span className="statusbar__item">
             {perf.renderWidth}×{perf.renderHeight} @ {perf.pixelRatio.toFixed(2)}×

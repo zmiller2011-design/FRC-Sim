@@ -1,7 +1,7 @@
 import type { PerspectiveCamera } from 'three';
 import type { Disposable } from '@/core';
 
-export type CameraModeId = 'orbit' | 'driverStation' | 'follow' | 'topDown' | 'robotPov';
+export type CameraModeId = 'orbit' | 'overhead' | 'blueStation' | 'redStation';
 
 export interface CameraContext {
   readonly camera: PerspectiveCamera;
@@ -17,4 +17,14 @@ export interface CameraMode extends Disposable {
   deactivate(): void;
   /** Returns the camera to this mode's default framing. */
   reset(): void;
+}
+
+/** Field extents in world coordinates, used by modes to frame and bound the view. */
+export interface FieldBounds {
+  /** World X range (field length). */
+  minX: number;
+  maxX: number;
+  /** World Z range (field width; world Z = −field Y). */
+  minZ: number;
+  maxZ: number;
 }

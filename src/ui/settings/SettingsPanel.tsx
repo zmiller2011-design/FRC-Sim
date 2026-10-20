@@ -135,6 +135,28 @@ export function SettingsPanel() {
         </label>
       </Section>
 
+      <Section title="Field">
+        <label className="field" htmlFor={`${id}-variant`}>
+          <span className="field__label">Field construction</span>
+          <select
+            id={`${id}-variant`}
+            value={settings.field.variant}
+            onChange={(e) =>
+              update({ field: { variant: e.target.value === 'andymark' ? 'andymark' : 'welded' } })
+            }
+          >
+            <option value="welded">Welded (official drawings)</option>
+            <option value="andymark">AndyMark</option>
+          </select>
+        </label>
+        <Toggle
+          label="Show collision geometry"
+          hint="Wireframe of the simplified shapes physics will use."
+          checked={settings.field.showColliders}
+          onChange={(showColliders) => update({ field: { showColliders } })}
+        />
+      </Section>
+
       <Section title="Simulation">
         <label className="field" htmlFor={`${id}-hz`}>
           <span className="field__label">Physics rate</span>

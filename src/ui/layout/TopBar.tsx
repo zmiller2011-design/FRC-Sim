@@ -1,11 +1,18 @@
 import type { Engine } from '@/engine';
-import { uiStore } from '@/state';
+import { type CameraView, uiStore } from '@/state';
 import { BrandMark } from '../common/BrandMark';
 import { Icon } from '../common/Icon';
 import { useHotkey } from '../hooks/useHotkey';
 import { useUiStore } from '../hooks/useUiStore';
 
 const SPEEDS = [0.25, 0.5, 1, 2] as const;
+
+const VIEWS: readonly { id: CameraView; label: string; key: string }[] = [
+  { id: 'orbit', label: 'Orbit', key: 'Digit1' },
+  { id: 'overhead', label: 'Overhead', key: 'Digit2' },
+  { id: 'blueStation', label: 'Blue DS', key: 'Digit3' },
+  { id: 'redStation', label: 'Red DS', key: 'Digit4' },
+];
 
 function togglePause(): void {
   const { paused, setPaused } = uiStore.getState();
@@ -17,6 +24,8 @@ function togglePerfOverlay(): void {
   updateSettings({ interface: { showPerfOverlay: !settings.interface.showPerfOverlay } });
 }
 
+const setView = (view: CameraView) => () => uiStore.getState().setCameraView(view);
+
 interface TopBarProps {
   engine: Engine;
   title: string;
@@ -27,10 +36,15 @@ interface TopBarProps {
 export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps) {
   const paused = useUiStore((s) => s.paused);
   const timeScale = useUiStore((s) => s.timeScale);
+  const cameraView = useUiStore((s) => s.cameraView);
   const perfVisible = useUiStore((s) => s.settings.interface.showPerfOverlay);
 
   useHotkey('KeyP', togglePause);
   useHotkey('Backquote', togglePerfOverlay);
+  useHotkey('Digit1', setView('orbit'));
+  useHotkey('Digit2', setView('overhead'));
+  useHotkey('Digit3', setView('blueStation'));
+  useHotkey('Digit4', setView('redStation'));
 
   return (
     <header className="topbar">
@@ -56,9 +70,9 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
           title="Pause / resume (P)"
         >
           <Icon name={paused ? 'play' : 'pause'} />
-          {paused ? 'Resume' : 'Pause'}
+          <span className="topbar__label">{paused ? 'Resume' : 'Pause'}</span>
         </button>
-        <div className="segmented" role="group" aria-label="Simulation speed">
+        <div className="segmented topbar__speed" role="group" aria-label="Simulation speed">
           {SPEEDS.map((speed) => (
             <button
               key={speed}
@@ -70,12 +84,37 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
             </button>
           ))}
         </div>
+        <div className="segmented" role="group" aria-label="Camera view">
+          {VIEWS.map((v, i) => (
+            <button
+              key={v.id}
+              className="segmented__item"
+              aria-pressed={cameraView === v.id}
+              onClick={setView(v.id)}
+              title={`${v.label} view (${i + 1})`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="topbar__group">
-        <button className="button" onClick={() => engine.resetCamera()} title="Reset camera">
+        <button
+          className="button"
+          onClick={() => engine.resetField()}
+          title="Return all FUEL to its starting positions"
+        >
+          <Icon name="reset" />
+          <span className="topbar__label">Reset field</span>
+        </button>
+        <button
+          className="button button--icon"
+          onClick={() => engine.resetCamera()}
+          aria-label="Reset view"
+          title="Reset view"
+        >
           <Icon name="camera" />
-          Reset view
         </button>
         <button
           className="button button--icon"

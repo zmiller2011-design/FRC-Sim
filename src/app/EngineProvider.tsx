@@ -38,6 +38,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         const store = uiStore.getState();
         created.setPaused(store.paused);
         created.setTimeScale(store.timeScale);
+        created.setCameraMode(store.cameraView);
         store.setRenderStatus(created.renderStatus);
 
         teardowns.push(created.events.on('perf', (s) => uiStore.getState().publishPerf(s)));
@@ -49,6 +50,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
             if (state.settings !== prev.settings) created.applySettings(state.settings);
             if (state.paused !== prev.paused) created.setPaused(state.paused);
             if (state.timeScale !== prev.timeScale) created.setTimeScale(state.timeScale);
+            if (state.cameraView !== prev.cameraView) created.setCameraMode(state.cameraView);
           }),
         );
         setStatus({ kind: 'ready', engine: created });

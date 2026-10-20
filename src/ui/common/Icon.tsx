@@ -5,6 +5,7 @@ const PATHS = {
   camera: 'M4 12a8 8 0 1 0 2.3-5.7M4 4v4h4',
   panel: 'M4 5h16v14H4zM14 5v14',
   gauge: 'M4 16a8 8 0 1 1 16 0M12 16l4-5',
+  reset: 'M20 12a8 8 0 1 1-2.3-5.7M20 4v4h-4M9 12a3 3 0 1 0 6 0a3 3 0 1 0-6 0',
 } as const;
 
 export type IconName = keyof typeof PATHS;
