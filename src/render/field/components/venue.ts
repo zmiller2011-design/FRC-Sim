@@ -6,8 +6,8 @@ const DRAPE_HEIGHT = 1.1;
 const TRUSS_Z = 9;
 
 /**
- * Arena surroundings: pipe-and-drape around the playing area, an overhead lighting truss
- * with light panels, and low audience risers along one side. Kept dark and simple so the
+ * Arena surroundings: pipe-and-drape around the playing area and lighting trusses with
+ * light panels along both sidelines. Kept dark and simple so the
  * field stays the focus.
  */
 export function buildVenue(b: GeometryBatcher, config: FieldConfig): void {
@@ -41,11 +41,5 @@ export function buildVenue(b: GeometryBatcher, config: FieldConfig): void {
       b.box('steelDark', ORIGIN, x, y, TRUSS_Z - 0.08, 1.3, 0.7, 0.16);
       b.box('lightPanel', ORIGIN, x, y, TRUSS_Z - 0.165, 1.2, 0.6, 0.01);
     }
-  }
-
-  // Audience risers behind the far guardrail.
-  for (let step = 0; step < 6; step++) {
-    const y = W + 5 + step * 0.9;
-    b.boxSpan('drape', ORIGIN, -1, L + 1, y, y + 0.9, 0, 0.45 * (step + 1));
   }
 }

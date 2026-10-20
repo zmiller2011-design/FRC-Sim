@@ -67,6 +67,7 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
         <button
           className={`button ${paused ? 'button--primary' : ''}`}
           onClick={togglePause}
+          aria-label={paused ? 'Resume' : 'Pause'}
           title="Pause / resume (P)"
         >
           <Icon name={paused ? 'play' : 'pause'} />
@@ -103,6 +104,7 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
         <button
           className="button"
           onClick={() => engine.resetField()}
+          aria-label="Reset field"
           title="Return all FUEL to its starting positions"
         >
           <Icon name="reset" />

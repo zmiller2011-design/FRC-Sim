@@ -47,8 +47,10 @@ export class OrbitCameraMode implements CameraMode {
     controls.enableDamping = true;
     controls.dampingFactor = 0.1;
     controls.minDistance = 1.5;
-    controls.maxDistance = 32;
-    controls.maxPolarAngle = Math.PI * 0.48;
+    // Far enough to frame the whole field; closer than the venue edge so nothing occludes it.
+    controls.maxDistance = 24;
+    // ≥ ~13° above the horizon: from max distance the camera stays above the venue drape.
+    controls.maxPolarAngle = Math.PI * 0.43;
     controls.screenSpacePanning = false;
     controls.update();
     this.controls = controls;

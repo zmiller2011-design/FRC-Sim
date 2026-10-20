@@ -17,7 +17,7 @@ export function buildFloor(b: GeometryBatcher, config: FieldConfig): void {
   const L = config.lengthM;
   const W = config.widthM;
   b.addLocal('carpet', b.unitPlane, ORIGIN, L / 2, W / 2, 0, L, W, 1);
-  b.addLocal('arenaFloor', b.unitPlane, ORIGIN, L / 2, W / 2, -0.004, L + 34, W + 26, 1);
+  b.addLocal('arenaFloor', b.unitPlane, ORIGIN, L / 2, W / 2, -0.004, L + 80, W + 70, 1);
 
   for (const e of config.elements) {
     if (e.type !== 'allianceWall') continue;
