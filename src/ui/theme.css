@@ -1,0 +1,253 @@
+:root {
+  color-scheme: dark;
+  --bg: #0d1117;
+  --surface: rgb(22 27 34 / 0.88);
+  --surface-solid: #161b22;
+  --border: rgb(240 246 252 / 0.12);
+  --text: #e6edf3;
+  --text-muted: #8b949e;
+  --accent: #ffc83d;
+  --accent-text: #1a1400;
+  --blue: #1f5fd6;
+  --red: #d62f2f;
+  --warn: #f0883e;
+  --radius: 8px;
+  --gap: 12px;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.4 var(--font);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  margin: 0;
+}
+
+/* ---- Building blocks ---- */
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(8px);
+}
+
+.button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface-solid);
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition:
+    background 120ms,
+    border-color 120ms;
+}
+.button:hover:not(:disabled) {
+  border-color: rgb(240 246 252 / 0.3);
+}
+.button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.button--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.button--primary:hover:not(:disabled) {
+  background: #ffd668;
+}
+.button--ghost {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 8px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+.field--inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+}
+.field select,
+.field input[type='range'] {
+  width: 100%;
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-solid);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  accent-color: var(--accent);
+}
+.field input[type='checkbox'] {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- Main menu ---- */
+
+.menu {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background:
+    radial-gradient(ellipse at 20% 10%, rgb(31 95 214 / 0.25), transparent 55%),
+    radial-gradient(ellipse at 80% 90%, rgb(214 47 47 / 0.22), transparent 55%), var(--bg);
+}
+.menu__panel {
+  width: min(420px, 100%);
+  padding: 32px;
+}
+.menu__eyebrow {
+  margin: 0 0 4px;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.menu__title {
+  font-size: 40px;
+  letter-spacing: -0.02em;
+}
+.menu__subtitle {
+  margin: 4px 0 24px;
+  color: var(--text-muted);
+}
+.menu__actions {
+  display: grid;
+  gap: 10px;
+}
+.menu__actions .button {
+  padding: 12px 16px;
+  text-align: left;
+}
+.menu__error {
+  margin: 16px 0 0;
+  color: var(--warn);
+}
+
+/* ---- Simulation screen ---- */
+
+.screen {
+  position: relative;
+  height: 100%;
+}
+.viewport {
+  position: absolute;
+  inset: 0;
+}
+.hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.hud > * {
+  pointer-events: auto;
+}
+.hud__top-left,
+.hud__top-right,
+.hud__bottom-left {
+  position: absolute;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.hud__top-left {
+  top: 16px;
+  left: 16px;
+}
+.hud__top-right {
+  top: 16px;
+  right: 16px;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.hud__bottom-left {
+  bottom: 16px;
+  left: 16px;
+}
+
+.perf {
+  margin: 0;
+  padding: 10px 12px;
+  font: 12px/1.5 var(--mono);
+  min-width: 240px;
+}
+.perf__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+}
+.perf__row dt {
+  color: var(--text-muted);
+}
+.perf__row dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.perf__row--warn dd {
+  color: var(--warn);
+}
+
+.settings {
+  width: min(300px, calc(100vw - 32px));
+  max-height: calc(100vh - 90px);
+  overflow-y: auto;
+  padding: 16px;
+}
+.settings__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.settings h2 {
+  font-size: 16px;
+}
+.settings h3 {
+  margin: 16px 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
