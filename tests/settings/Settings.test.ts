@@ -15,7 +15,7 @@ describe('mergeSettings', () => {
       simulation: { physicsHz: 1_000_000, maxSubSteps: Number.NaN },
       graphics: { pixelRatioCap: 0 },
     });
-    expect(merged.simulation.physicsHz).toBe(1000);
+    expect(merged.simulation.physicsHz).toBe(480);
     expect(merged.simulation.maxSubSteps).toBe(DEFAULT_SETTINGS.simulation.maxSubSteps);
     expect(merged.graphics.pixelRatioCap).toBe(0.5);
   });
@@ -52,5 +52,22 @@ describe('defaults', () => {
       'high',
       'ultra',
     ]);
+  });
+});
+
+describe('driving settings', () => {
+  it('default to 120 Hz physics, 60 Hz control, field-relative, brake', () => {
+    expect(DEFAULT_SETTINGS.simulation.physicsHz).toBe(120);
+    expect(DEFAULT_SETTINGS.simulation.physicsHz / DEFAULT_SETTINGS.simulation.logicDivisor).toBe(
+      60,
+    );
+    expect(DEFAULT_SETTINGS.driving).toEqual({ fieldRelative: true, neutralMode: 'brake' });
+  });
+
+  it('rejects unknown neutral modes', () => {
+    const merged = mergeSettings(DEFAULT_SETTINGS, {
+      driving: { neutralMode: 'freewheel' as never },
+    });
+    expect(merged.driving.neutralMode).toBe('brake');
   });
 });

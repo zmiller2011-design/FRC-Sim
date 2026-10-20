@@ -27,6 +27,8 @@ export interface SimulationSettings {
 
 export interface InterfaceSettings {
   showPerfOverlay: boolean;
+  /** Developer panel with robot velocity, acceleration, heading and module states. */
+  showRobotTelemetry: boolean;
   /** How often the simulation publishes numbers to the UI. */
   telemetryHz: number;
 }
@@ -40,11 +42,19 @@ export interface FieldSettings {
   showColliders: boolean;
 }
 
+export interface DrivingSettings {
+  /** Field-relative (from the driver's wall) or robot-relative translation. */
+  fieldRelative: boolean;
+  /** Drive motor behaviour with no input: brake (stop quickly) or coast (glide). */
+  neutralMode: 'brake' | 'coast';
+}
+
 export interface Settings {
   graphics: GraphicsSettings;
   simulation: SimulationSettings;
   interface: InterfaceSettings;
   field: FieldSettings;
+  driving: DrivingSettings;
 }
 
 export type SettingsPatch = {
@@ -65,17 +75,24 @@ export const DEFAULT_SETTINGS: Settings = {
     shadowMapSize: 1024,
   },
   simulation: {
-    physicsHz: 200,
-    logicDivisor: 4,
+    // 120 Hz physics with robot control every 2nd step (60 Hz).
+    physicsHz: 120,
+    logicDivisor: 2,
+    // At 120 Hz this allows up to 100 ms of catch-up per frame; beyond that time is dropped.
     maxSubSteps: 12,
   },
   interface: {
     showPerfOverlay: IS_DEV,
+    showRobotTelemetry: IS_DEV,
     telemetryHz: 10,
   },
   field: {
     variant: 'welded',
     showColliders: false,
+  },
+  driving: {
+    fieldRelative: true,
+    neutralMode: 'brake',
   },
 };
 
@@ -83,7 +100,7 @@ const LIMITS = {
   renderScale: [0.5, 1],
   pixelRatioCap: [0.5, 3],
   shadowMapSize: [256, 8192],
-  physicsHz: [60, 1000],
+  physicsHz: [60, 480],
   logicDivisor: [1, 20],
   maxSubSteps: [1, 64],
   telemetryHz: [1, 60],
@@ -101,6 +118,7 @@ export function mergeSettings(base: Settings, patch: SettingsPatch): Settings {
   const s = { ...base.simulation, ...patch.simulation };
   const i = { ...base.interface, ...patch.interface };
   const f = { ...base.field, ...patch.field };
+  const d = { ...base.driving, ...patch.driving };
   return {
     graphics: {
       ...g,
@@ -124,6 +142,10 @@ export function mergeSettings(base: Settings, patch: SettingsPatch): Settings {
     field: {
       variant: f.variant === 'andymark' ? 'andymark' : 'welded',
       showColliders: f.showColliders === true,
+    },
+    driving: {
+      fieldRelative: d.fieldRelative !== false,
+      neutralMode: d.neutralMode === 'coast' ? 'coast' : 'brake',
     },
   };
 }

@@ -42,6 +42,7 @@ export function EngineProvider({ children }: { children: ReactNode }) {
         store.setRenderStatus(created.renderStatus);
 
         teardowns.push(created.events.on('perf', (s) => uiStore.getState().publishPerf(s)));
+        teardowns.push(created.events.on('robot', (s) => uiStore.getState().publishRobot(s)));
         teardowns.push(
           created.events.on('renderStatus', (s) => uiStore.getState().setRenderStatus(s)),
         );

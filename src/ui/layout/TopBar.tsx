@@ -19,6 +19,16 @@ function togglePause(): void {
   setPaused(!paused);
 }
 
+function toggleFieldRelative(): void {
+  const { settings, updateSettings } = uiStore.getState();
+  updateSettings({ driving: { fieldRelative: !settings.driving.fieldRelative } });
+}
+
+function toggleTelemetry(): void {
+  const { settings, updateSettings } = uiStore.getState();
+  updateSettings({ interface: { showRobotTelemetry: !settings.interface.showRobotTelemetry } });
+}
+
 function togglePerfOverlay(): void {
   const { settings, updateSettings } = uiStore.getState();
   updateSettings({ interface: { showPerfOverlay: !settings.interface.showPerfOverlay } });
@@ -38,6 +48,7 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
   const timeScale = useUiStore((s) => s.timeScale);
   const cameraView = useUiStore((s) => s.cameraView);
   const perfVisible = useUiStore((s) => s.settings.interface.showPerfOverlay);
+  const fieldRelative = useUiStore((s) => s.settings.driving.fieldRelative);
 
   useHotkey('KeyP', togglePause);
   useHotkey('Backquote', togglePerfOverlay);
@@ -45,6 +56,9 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
   useHotkey('Digit2', setView('overhead'));
   useHotkey('Digit3', setView('blueStation'));
   useHotkey('Digit4', setView('redStation'));
+  useHotkey('KeyF', toggleFieldRelative);
+  useHotkey('KeyT', toggleTelemetry);
+  useHotkey('KeyR', () => engine.resetRobot());
 
   return (
     <header className="topbar">
@@ -101,6 +115,24 @@ export function TopBar({ engine, title, panelOpen, onTogglePanel }: TopBarProps)
       </div>
 
       <div className="topbar__group">
+        <button
+          className="button"
+          onClick={toggleFieldRelative}
+          aria-label={fieldRelative ? 'Field-relative driving' : 'Robot-relative driving'}
+          title="Toggle field-relative / robot-relative driving (F)"
+        >
+          <span className="topbar__mode">{fieldRelative ? 'Field' : 'Robot'}</span>
+          <span className="topbar__label">-relative</span>
+        </button>
+        <button
+          className="button"
+          onClick={() => engine.resetRobot()}
+          aria-label="Reset robot"
+          title="Return the robot to its starting position (R)"
+        >
+          <Icon name="robot" />
+          <span className="topbar__label">Reset robot</span>
+        </button>
         <button
           className="button"
           onClick={() => engine.resetField()}

@@ -8,7 +8,7 @@ import {
 import { uiStore } from '@/state';
 import { useUiStore } from '../hooks/useUiStore';
 
-const PHYSICS_RATES = [120, 200, 240, 500] as const;
+const PHYSICS_RATES = [60, 120, 240] as const;
 const SHADOW_SIZES = [1024, 2048, 4096] as const;
 
 const update = (patch: SettingsPatch) => uiStore.getState().updateSettings(patch);
@@ -157,6 +157,28 @@ export function SettingsPanel() {
         />
       </Section>
 
+      <Section title="Driving">
+        <Toggle
+          label="Field-relative"
+          hint="Forward is away from your alliance wall. Toggle with F."
+          checked={settings.driving.fieldRelative}
+          onChange={(fieldRelative) => update({ driving: { fieldRelative } })}
+        />
+        <label className="field" htmlFor={`${id}-neutral`}>
+          <span className="field__label">When no input</span>
+          <select
+            id={`${id}-neutral`}
+            value={settings.driving.neutralMode}
+            onChange={(e) =>
+              update({ driving: { neutralMode: e.target.value === 'coast' ? 'coast' : 'brake' } })
+            }
+          >
+            <option value="brake">Brake (motors resist motion)</option>
+            <option value="coast">Coast (robot glides)</option>
+          </select>
+        </label>
+      </Section>
+
       <Section title="Simulation">
         <label className="field" htmlFor={`${id}-hz`}>
           <span className="field__label">Physics rate</span>
@@ -167,7 +189,7 @@ export function SettingsPanel() {
           >
             {PHYSICS_RATES.map((hz) => (
               <option key={hz} value={hz}>
-                {hz} Hz
+                {hz} Hz (control {hz / simulation.logicDivisor} Hz)
               </option>
             ))}
           </select>
@@ -180,6 +202,12 @@ export function SettingsPanel() {
           hint="Toggle with the ` key."
           checked={settings.interface.showPerfOverlay}
           onChange={(showPerfOverlay) => update({ interface: { showPerfOverlay } })}
+        />
+        <Toggle
+          label="Robot telemetry"
+          hint="Velocity, acceleration, heading, module states. Toggle with T."
+          checked={settings.interface.showRobotTelemetry}
+          onChange={(showRobotTelemetry) => update({ interface: { showRobotTelemetry } })}
         />
       </Section>
     </div>

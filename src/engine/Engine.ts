@@ -21,9 +21,10 @@ import {
   SceneManager,
 } from '@/render';
 import { mergeSettings, type Settings, type SettingsPatch } from '@/settings';
-import type { PerfSample, RenderStatus } from '@/state';
+import type { PerfSample, RenderStatus, RobotTelemetry } from '@/state';
 import { type FieldInfo, FieldRuntime } from './FieldRuntime';
 import { PerfMonitor } from './PerfMonitor';
+import { RobotRuntime } from './RobotRuntime';
 import { SystemScheduler } from './SystemScheduler';
 
 /** Driver eye position: behind the wall at standing height. [APPROX] */
@@ -37,6 +38,8 @@ export interface EngineEvents {
   renderStatus: RenderStatus;
   /** The field was built or rebuilt (variant change). */
   field: FieldInfo;
+  /** Robot telemetry at `interface.telemetryHz`. The object is reused: copy it if kept. */
+  robot: Readonly<RobotTelemetry>;
 }
 
 export interface EngineOptions {
@@ -71,6 +74,7 @@ export class Engine implements Disposable {
   private readonly scenes: SceneManager;
   private readonly cameras: CameraManager;
   private readonly field: FieldRuntime;
+  private readonly robot: RobotRuntime;
   private readonly scheduler: SystemScheduler;
   private readonly stepper: FixedStepper;
   private readonly driver: FrameDriver;
@@ -149,6 +153,9 @@ export class Engine implements Disposable {
       }),
     );
     this.scheduler.addRender({ name: 'field', sync: () => this.field.sync() });
+    this.robot = this.scope.add(
+      new RobotRuntime(this.scenes.world, this.scheduler, this.field.config, this.settings.driving),
+    );
   }
 
   getSettings(): Readonly<Settings> {
@@ -217,6 +224,11 @@ export class Engine implements Disposable {
     this.field.reset();
   }
 
+  /** Puts the robot back at its starting position, at rest. */
+  resetRobot(): void {
+    this.robot.reset();
+  }
+
   applySettings(patch: SettingsPatch): void {
     this.settings = mergeSettings(this.settings, patch);
     const { graphics, simulation, interface: ui, field } = this.settings;
@@ -236,8 +248,10 @@ export class Engine implements Disposable {
       this.registerCameras();
       this.cameras.setMode(mode);
       this.scenes.applyGraphics(graphics);
+      this.robot.setField(this.field.config);
       this.events.emit('field', this.field.info);
     }
+    this.robot.applyDriving(this.settings.driving);
     this.field.setCollidersVisible(field.showColliders);
   }
 
@@ -315,6 +329,8 @@ export class Engine implements Disposable {
       this.perfSample.simTime = this.stepper.simTime;
       this.renderer.readStats(this.perfSample);
       this.events.emit('perf', this.perfSample);
+      const { physicsHz, logicDivisor } = this.settings.simulation;
+      this.events.emit('robot', this.robot.fillTelemetry(physicsHz, physicsHz / logicDivisor));
     }
   };
 }

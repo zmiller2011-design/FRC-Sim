@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ContextLostOverlay } from '@/ui/hud/ContextLostOverlay';
 import { PerfOverlay } from '@/ui/hud/PerfOverlay';
+import { RobotTelemetryPanel } from '@/ui/telemetry/RobotTelemetryPanel';
 import { useUiStore } from '@/ui/hooks/useUiStore';
 import { StatusBar } from '@/ui/layout/StatusBar';
 import { TopBar } from '@/ui/layout/TopBar';
@@ -17,7 +18,7 @@ const HINTS = {
 
 function ViewportHint() {
   const view = useUiStore((s) => s.cameraView);
-  return <p className="viewport-hint">{HINTS[view]} · Views 1–4</p>;
+  return <p className="viewport-hint">WASD/QE drive · {HINTS[view]} · Views 1–4</p>;
 }
 
 /**
@@ -28,6 +29,7 @@ function ViewportHint() {
 export function SandboxScreen() {
   const engine = useEngine();
   const showPerf = useUiStore((s) => s.settings.interface.showPerfOverlay);
+  const showTelemetry = useUiStore((s) => s.settings.interface.showRobotTelemetry);
   const [panelOpen, setPanelOpen] = useState(true);
 
   if (!engine) return null;
@@ -44,6 +46,7 @@ export function SandboxScreen() {
         <div className="shell__viewport">
           <Viewport engine={engine} />
           {showPerf && <PerfOverlay engine={engine} />}
+          {showTelemetry && <RobotTelemetryPanel />}
           <ContextLostOverlay />
           <ViewportHint />
         </div>

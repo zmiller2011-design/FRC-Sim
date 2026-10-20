@@ -7,3 +7,4 @@ export * from './field/FieldView';
 export * from './Renderer';
 export * from './SceneManager';
 export * from './webglSupport';
+export * from './robot/RobotView';

@@ -1,6 +1,7 @@
 import { createStore } from 'zustand/vanilla';
 import { mergeSettings, type Settings, type SettingsPatch } from '@/settings';
 import type { PerfSample, RenderStatus } from './perf';
+import { copyRobotTelemetry, type RobotTelemetry } from './robotTelemetry';
 import { loadSettings, saveSettings } from './persistence';
 
 export type Screen = 'menu' | 'sandbox';
@@ -18,6 +19,7 @@ export interface UiState {
   cameraView: CameraView;
   /** Latest throttled performance sample, or null before the first one arrives. */
   perf: Readonly<PerfSample> | null;
+  robot: Readonly<RobotTelemetry> | null;
 
   setScreen(screen: Screen): void;
   updateSettings(patch: SettingsPatch): void;
@@ -27,6 +29,8 @@ export interface UiState {
   setCameraView(view: CameraView): void;
   /** Copies the sample: the engine reuses its object between publishes. */
   publishPerf(sample: Readonly<PerfSample>): void;
+  /** Copies the sample (the engine reuses its object). */
+  publishRobot(sample: Readonly<RobotTelemetry>): void;
 }
 
 /**
@@ -41,6 +45,7 @@ export const uiStore = createStore<UiState>()((set, get) => ({
   renderStatus: 'ok',
   cameraView: 'orbit',
   perf: null,
+  robot: null,
 
   setScreen: (screen) => set({ screen }),
   updateSettings: (patch) => {
@@ -53,4 +58,5 @@ export const uiStore = createStore<UiState>()((set, get) => ({
   setRenderStatus: (renderStatus) => set({ renderStatus }),
   setCameraView: (cameraView) => set({ cameraView }),
   publishPerf: (sample) => set({ perf: { ...sample } }),
+  publishRobot: (sample) => set({ robot: copyRobotTelemetry(sample) }),
 }));
