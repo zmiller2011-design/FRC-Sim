@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_SETTINGS, mergeSettings } from '@/settings/Settings';
+import { QUALITY_PRESET_ORDER, QUALITY_PRESETS } from '@/settings/qualityPresets';
+import { DEFAULT_SETTINGS, effectivePixelRatio, mergeSettings } from '@/settings/Settings';
 
 describe('mergeSettings', () => {
   it('applies partial patches without touching other groups', () => {
@@ -17,5 +18,39 @@ describe('mergeSettings', () => {
     expect(merged.simulation.physicsHz).toBe(1000);
     expect(merged.simulation.maxSubSteps).toBe(DEFAULT_SETTINGS.simulation.maxSubSteps);
     expect(merged.graphics.pixelRatioCap).toBe(0.5);
+  });
+});
+
+describe('render resolution', () => {
+  it('clamps render scale to 50–100%', () => {
+    expect(
+      mergeSettings(DEFAULT_SETTINGS, { graphics: { renderScale: 0.1 } }).graphics.renderScale,
+    ).toBe(0.5);
+    expect(
+      mergeSettings(DEFAULT_SETTINGS, { graphics: { renderScale: 2 } }).graphics.renderScale,
+    ).toBe(1);
+  });
+
+  it('caps device pixel ratio, then applies render scale', () => {
+    const g = { ...DEFAULT_SETTINGS.graphics, pixelRatioCap: 1.5, renderScale: 0.5 };
+    expect(effectivePixelRatio(g, 3)).toBeCloseTo(0.75);
+    expect(effectivePixelRatio(g, 1)).toBeCloseTo(0.5);
+    expect(effectivePixelRatio({ ...g, renderScale: 1 }, 0)).toBe(1);
+  });
+});
+
+describe('defaults', () => {
+  it('match the Medium preset, with shadows disabled', () => {
+    const { preset, ...rest } = DEFAULT_SETTINGS.graphics;
+    expect(preset).toBe('medium');
+    expect(rest).toEqual(QUALITY_PRESETS.medium);
+    expect(DEFAULT_SETTINGS.graphics.shadows).toBe(false);
+  });
+
+  it('only High and Ultra presets enable shadows', () => {
+    expect(QUALITY_PRESET_ORDER.filter((p) => QUALITY_PRESETS[p].shadows)).toEqual([
+      'high',
+      'ultra',
+    ]);
   });
 });

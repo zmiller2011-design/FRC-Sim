@@ -1,3 +1,3 @@
-export type { PerfSample } from './perf';
+export type { PerfSample, RenderStatus } from './perf';
 export * from './persistence';
 export * from './uiStore';

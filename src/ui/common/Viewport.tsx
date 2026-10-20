@@ -12,5 +12,5 @@ export function Viewport({ engine }: { engine: Engine }) {
     return () => engine.unmount();
   }, [engine]);
 
-  return <div ref={containerRef} className="viewport" />;
+  return <div ref={containerRef} className="viewport" aria-label="3D simulation view" />;
 }

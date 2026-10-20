@@ -18,8 +18,13 @@ npm run build      # production build into dist/
 
 ## Current state
 
-Stages 0 and 1 are in place: the fixed-timestep engine loop, renderer, orbit camera,
-quality settings and performance overlay. The sandbox shows a placeholder field with a
-test body driven by the 200 Hz simulation. Robots, physics and game rules come next.
+Stages 0 and 1 are in place: the fixed-timestep engine loop and the rendering foundation
+(renderer, scene manager, camera, graphics settings, loading and error screens, diagnostics).
+The sandbox shows a measuring floor and a test body driven by the 200 Hz simulation.
+Physics, robots and game rules come next.
 
-Controls in the sandbox: drag to orbit, right-drag to pan, scroll to zoom, `P` to pause.
+| Control                    | Action                                                          |
+| -------------------------- | --------------------------------------------------------------- |
+| Drag / right-drag / scroll | Orbit / pan / zoom                                              |
+| `P`                        | Pause or resume                                                 |
+| `` ` ``                    | Toggle the diagnostics overlay (on by default in `npm run dev`) |

@@ -1,7 +1,17 @@
 import type { PerfSample } from '@/state';
 
-/** Accumulates per-frame numbers and produces an averaged sample at a fixed real-time interval. */
+/** Number of recent frames kept for the frame-time graph (about 3 s at 60 fps). */
+export const FRAME_HISTORY_LENGTH = 180;
+
+/**
+ * Accumulates per-frame numbers and produces an averaged sample at a fixed real-time interval.
+ * Also keeps a ring buffer of recent frame times for graphing. Allocation-free per frame.
+ */
 export class PerfMonitor {
+  /** Recent frame times in milliseconds, oldest at `historyHead`. NaN until a slot is filled. */
+  readonly frameHistory = new Float32Array(FRAME_HISTORY_LENGTH).fill(Number.NaN);
+  historyHead = 0;
+
   private frames = 0;
   private steps = 0;
   private elapsed = 0;
@@ -24,6 +34,8 @@ export class PerfMonitor {
     this.elapsed += frameSeconds;
     this.cpu += cpuMs;
     if (frameSeconds > this.worst) this.worst = frameSeconds;
+    this.frameHistory[this.historyHead] = frameSeconds * 1000;
+    this.historyHead = (this.historyHead + 1) % FRAME_HISTORY_LENGTH;
     return this.elapsed >= this.interval;
   }
 

@@ -5,21 +5,21 @@ import {
   EventBus,
   FixedStepper,
   type FrameDriver,
-  fieldToWorld,
   pose2d,
   vec3,
 } from '@/core';
 import {
+  assertWebGL2,
   CameraManager,
   type CameraModeId,
+  type GpuInfo,
   OrbitCameraMode,
-  PLACEHOLDER_FIELD,
   Renderer,
-  SceneGraph,
+  SceneManager,
   TestBodyView,
 } from '@/render';
 import { mergeSettings, type Settings, type SettingsPatch } from '@/settings';
-import type { PerfSample } from '@/state';
+import type { PerfSample, RenderStatus } from '@/state';
 import { PerfMonitor } from './PerfMonitor';
 import { TestBodySim } from './sandbox/TestBodySim';
 import { SystemScheduler } from './SystemScheduler';
@@ -27,6 +27,7 @@ import { SystemScheduler } from './SystemScheduler';
 export interface EngineEvents {
   /** Published at `interface.telemetryHz`. The object is reused: copy it if you keep it. */
   perf: Readonly<PerfSample>;
+  renderStatus: RenderStatus;
 }
 
 export interface EngineOptions {
@@ -35,9 +36,22 @@ export interface EngineOptions {
   frameDriver?: FrameDriver;
 }
 
+/** Read-only view of the recent frame-time ring buffer, for graphing. */
+export interface FrameHistory {
+  /** Frame times in milliseconds. The oldest sample is at `head`. */
+  readonly samples: Float32Array;
+  readonly head: number;
+}
+
 /**
  * Composition root. Owns every system and the frame loop. The UI talks to the simulation
  * only through this class's public methods and `events`.
+ *
+ * Loop structure (one animation frame):
+ *   1. FixedStepper converts real elapsed time into 0..N fixed simulation steps.
+ *   2. Render-sync systems interpolate between the last two steps using `alpha`.
+ *   3. The camera updates and the scene is drawn once.
+ * Simulation never depends on frame rate; rendering never advances the simulation.
  */
 export class Engine implements Disposable {
   readonly events = new EventBus<EngineEvents>();
@@ -45,7 +59,7 @@ export class Engine implements Disposable {
   private settings: Settings;
   private readonly scope = new DisposalScope();
   private readonly renderer: Renderer;
-  private readonly sceneGraph: SceneGraph;
+  private readonly scenes: SceneManager;
   private readonly cameras: CameraManager;
   private readonly scheduler: SystemScheduler;
   private readonly stepper: FixedStepper;
@@ -58,23 +72,31 @@ export class Engine implements Disposable {
     cpuMs: 0,
     stepsPerSecond: 0,
     droppedSeconds: 0,
+    simTime: 0,
     drawCalls: 0,
     triangles: 0,
     geometries: 0,
     textures: 0,
+    renderWidth: 0,
+    renderHeight: 0,
+    pixelRatio: 1,
   };
   private droppedAtLastSample = 0;
   private paused = false;
   private timeScale = 1;
   private mounted = false;
 
-  // Stage-1 sandbox content; replaced by field, robots and game pieces in later stages.
+  // Rendering-foundation test content; replaced by robots in stage 4.
   private readonly testBody: TestBodySim;
-  private readonly testBodyView: TestBodyView;
   private readonly interpolatedPose = pose2d();
 
-  /** Async so heavy one-time setup (physics WASM, asset preloads) can be awaited here. */
+  /**
+   * Checks WebGL support, then builds every system. Rejects with a `RenderInitError`
+   * describing what went wrong when 3D graphics are unavailable.
+   * Async so heavy one-time setup (physics WASM, asset preloads) can be awaited here later.
+   */
   static async create(options: EngineOptions): Promise<Engine> {
+    assertWebGL2();
     return new Engine(options);
   }
 
@@ -82,10 +104,16 @@ export class Engine implements Disposable {
     this.settings = options.settings;
     const { graphics, simulation, interface: ui } = this.settings;
 
-    this.driver = this.scope.add(options.frameDriver ?? new AnimationFrameDriver());
-    this.renderer = this.scope.add(new Renderer(graphics));
-    this.sceneGraph = this.scope.add(new SceneGraph(graphics));
-    this.cameras = this.scope.add(new CameraManager());
+    try {
+      this.driver = this.scope.add(options.frameDriver ?? new AnimationFrameDriver());
+      this.renderer = this.scope.add(new Renderer(graphics));
+      this.scenes = this.scope.add(new SceneManager(graphics));
+      this.cameras = this.scope.add(new CameraManager());
+    } catch (error) {
+      // Release whatever was created before the failure, then surface the original error.
+      this.scope.dispose();
+      throw error;
+    }
     this.scheduler = new SystemScheduler(simulation.logicDivisor);
     this.stepper = new FixedStepper({
       stepHz: simulation.physicsHz,
@@ -95,25 +123,21 @@ export class Engine implements Disposable {
     this.scope.defer(() => this.scheduler.clear());
     this.scope.defer(() => this.events.clear());
 
-    const fieldCenter = fieldToWorld(
-      PLACEHOLDER_FIELD.lengthM / 2,
-      PLACEHOLDER_FIELD.widthM / 2,
-      0,
-      vec3(),
-    );
-    this.cameras.register(
-      new OrbitCameraMode(vec3(fieldCenter.x, 0, fieldCenter.z), vec3(0, 11, 14)),
-    );
+    // World coordinates: the field-frame origin is the world origin (see core/math/frames.ts).
+    this.cameras.register(new OrbitCameraMode(vec3(0, 0, 0), vec3(-5, 4.5, 6.5)));
     this.cameras.setMode('orbit');
     this.scope.defer(this.renderer.onResize(() => this.cameras.setAspect(this.renderer.aspect)));
+    this.scope.defer(
+      this.renderer.onStatusChange((status) => this.events.emit('renderStatus', status)),
+    );
 
-    this.testBody = new TestBodySim(PLACEHOLDER_FIELD.lengthM / 2, PLACEHOLDER_FIELD.widthM / 2);
-    this.testBodyView = this.scope.add(new TestBodyView(this.sceneGraph.field));
+    // The test body drives a figure-eight centred on the origin.
+    this.testBody = new TestBodySim(0, 0);
+    const testBodyView = this.scenes.addView(new TestBodyView(this.scenes.world));
     this.scheduler.addFixed('physics', this.testBody);
     this.scheduler.addRender({
       name: 'testBodyView',
-      sync: (alpha) =>
-        this.testBodyView.sync(this.testBody.pose.sample(alpha, this.interpolatedPose)),
+      sync: (alpha) => testBodyView.sync(this.testBody.pose.sample(alpha, this.interpolatedPose)),
     });
   }
 
@@ -123,6 +147,19 @@ export class Engine implements Disposable {
 
   get isPaused(): boolean {
     return this.paused;
+  }
+
+  get gpuInfo(): Readonly<GpuInfo> {
+    return this.renderer.gpuInfo;
+  }
+
+  get renderStatus(): RenderStatus {
+    return this.renderer.currentStatus;
+  }
+
+  /** Recent frame times for diagnostics. The buffer is live: read it, don't keep it. */
+  get frameHistory(): FrameHistory {
+    return { samples: this.perf.frameHistory, head: this.perf.historyHead };
   }
 
   /** Attaches the canvas to `container` and starts the frame loop. */
@@ -153,6 +190,10 @@ export class Engine implements Disposable {
     this.cameras.setMode(id);
   }
 
+  resetCamera(): void {
+    this.cameras.resetActive();
+  }
+
   applySettings(patch: SettingsPatch): void {
     this.settings = mergeSettings(this.settings, patch);
     const { graphics, simulation, interface: ui } = this.settings;
@@ -160,7 +201,7 @@ export class Engine implements Disposable {
     if (this.renderer.applyGraphics(graphics) && this.mounted) {
       this.cameras.attach(this.renderer.canvas);
     }
-    this.sceneGraph.applyGraphics(graphics);
+    this.scenes.applyGraphics(graphics);
     this.stepper.configure({ stepHz: simulation.physicsHz, maxSubSteps: simulation.maxSubSteps });
     this.scheduler.setLogicDivisor(simulation.logicDivisor);
     this.perf.setPublishHz(ui.telemetryHz);
@@ -182,13 +223,14 @@ export class Engine implements Disposable {
     const steps = this.stepper.advance(simDt, this.runStep);
     this.scheduler.runRender(this.stepper.alpha, realDt);
     this.cameras.update(realDt);
-    this.renderer.render(this.sceneGraph.scene, this.cameras.camera);
+    this.renderer.render(this.scenes.scene, this.cameras.camera);
 
     const cpuMs = performance.now() - start;
     if (this.perf.record(realDt, cpuMs, steps)) {
       const dropped = this.stepper.droppedTime - this.droppedAtLastSample;
       this.droppedAtLastSample = this.stepper.droppedTime;
       this.perf.fill(this.perfSample, dropped);
+      this.perfSample.simTime = this.stepper.simTime;
       this.renderer.readStats(this.perfSample);
       this.events.emit('perf', this.perfSample);
     }

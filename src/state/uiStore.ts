@@ -1,6 +1,6 @@
 import { createStore } from 'zustand/vanilla';
 import { mergeSettings, type Settings, type SettingsPatch } from '@/settings';
-import type { PerfSample } from './perf';
+import type { PerfSample, RenderStatus } from './perf';
 import { loadSettings, saveSettings } from './persistence';
 
 export type Screen = 'menu' | 'sandbox';
@@ -9,12 +9,17 @@ export interface UiState {
   screen: Screen;
   settings: Settings;
   paused: boolean;
+  /** Simulation speed multiplier (1 = real time). */
+  timeScale: number;
+  renderStatus: RenderStatus;
   /** Latest throttled performance sample, or null before the first one arrives. */
   perf: Readonly<PerfSample> | null;
 
   setScreen(screen: Screen): void;
   updateSettings(patch: SettingsPatch): void;
   setPaused(paused: boolean): void;
+  setTimeScale(timeScale: number): void;
+  setRenderStatus(status: RenderStatus): void;
   /** Copies the sample: the engine reuses its object between publishes. */
   publishPerf(sample: Readonly<PerfSample>): void;
 }
@@ -27,6 +32,8 @@ export const uiStore = createStore<UiState>()((set, get) => ({
   screen: 'menu',
   settings: loadSettings(),
   paused: false,
+  timeScale: 1,
+  renderStatus: 'ok',
   perf: null,
 
   setScreen: (screen) => set({ screen }),
@@ -36,5 +43,7 @@ export const uiStore = createStore<UiState>()((set, get) => ({
     set({ settings });
   },
   setPaused: (paused) => set({ paused }),
+  setTimeScale: (timeScale) => set({ timeScale }),
+  setRenderStatus: (renderStatus) => set({ renderStatus }),
   publishPerf: (sample) => set({ perf: { ...sample } }),
 }));

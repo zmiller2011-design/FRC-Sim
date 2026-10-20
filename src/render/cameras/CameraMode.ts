@@ -15,4 +15,6 @@ export interface CameraMode extends Disposable {
   /** Called once per rendered frame, after simulation state has been interpolated. */
   update(frameDt: number): void;
   deactivate(): void;
+  /** Returns the camera to this mode's default framing. */
+  reset(): void;
 }

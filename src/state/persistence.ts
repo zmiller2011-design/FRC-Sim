@@ -1,6 +1,7 @@
 import { DEFAULT_SETTINGS, mergeSettings, type Settings, type SettingsPatch } from '@/settings';
 
-const SETTINGS_KEY = 'frc-sim.settings.v1';
+// v2: render scale added and shadows off by default; v1 values are intentionally not migrated.
+const SETTINGS_KEY = 'frc-sim.settings.v2';
 
 /** Storage may be unavailable (private mode, blocked site data), so every access is guarded. */
 function readJson(key: string): unknown {

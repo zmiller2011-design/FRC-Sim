@@ -1,15 +1,13 @@
 import { uiStore } from '@/state';
-import { useEngineStatus } from '../engineContext';
+import { BrandMark } from '@/ui/common/BrandMark';
 
 const UPCOMING = ['Play Match', 'Multiplayer', 'Robot Builder'] as const;
 
 export function MainMenu() {
-  const status = useEngineStatus();
-  const ready = status.kind === 'ready';
-
   return (
     <main className="menu">
       <div className="menu__panel panel">
+        <BrandMark size={36} />
         <p className="menu__eyebrow">FRC 2026 · REBUILT</p>
         <h1 className="menu__title">FRC Sim</h1>
         <p className="menu__subtitle">Real-time robot and match simulator</p>
@@ -17,23 +15,18 @@ export function MainMenu() {
         <nav className="menu__actions">
           <button
             className="button button--primary"
-            disabled={!ready}
+            autoFocus
             onClick={() => uiStore.getState().setScreen('sandbox')}
           >
-            {ready ? 'Open Sandbox' : 'Loading engine…'}
+            Open Sandbox
           </button>
           {UPCOMING.map((label) => (
             <button key={label} className="button" disabled title="Coming in a later stage">
               {label}
+              <span className="menu__soon">Soon</span>
             </button>
           ))}
         </nav>
-
-        {status.kind === 'error' && (
-          <p className="menu__error" role="alert">
-            The simulator could not start: {status.message}
-          </p>
-        )}
       </div>
     </main>
   );

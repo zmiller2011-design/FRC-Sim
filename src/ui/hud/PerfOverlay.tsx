@@ -1,40 +1,53 @@
+import type { Engine } from '@/engine';
 import { useUiStore } from '../hooks/useUiStore';
+import { FrameTimeGraph } from './FrameTimeGraph';
 
-function format(value: number, digits = 0): string {
+function fixed(value: number, digits = 0): string {
   return value.toFixed(digits);
 }
 
-/** Updates at the telemetry rate (default 10 Hz), never per frame. */
-export function PerfOverlay() {
+/** Diagnostics overlay. Numbers update at the telemetry rate (10 Hz), never per frame. */
+export function PerfOverlay({ engine }: { engine: Engine }) {
   const perf = useUiStore((s) => s.perf);
   const physicsHz = useUiStore((s) => s.settings.simulation.physicsHz);
 
-  if (!perf) return null;
-
-  const rows: [string, string][] = [
-    ['FPS', format(perf.fps)],
-    ['Frame', `${format(perf.frameMs, 1)} ms (worst ${format(perf.worstFrameMs, 1)})`],
-    ['CPU', `${format(perf.cpuMs, 2)} ms`],
-    ['Sim steps', `${format(perf.stepsPerSecond)} / ${physicsHz} Hz`],
-    ['Draw calls', format(perf.drawCalls)],
-    ['Triangles', format(perf.triangles)],
-    ['GPU objects', `${perf.geometries} geo · ${perf.textures} tex`],
-  ];
+  const fpsClass =
+    !perf || perf.fps >= 55 ? '' : perf.fps >= 30 ? 'perf__value--warn' : 'perf__value--bad';
 
   return (
-    <dl className="panel perf">
-      {rows.map(([label, value]) => (
-        <div key={label} className="perf__row">
-          <dt>{label}</dt>
-          <dd>{value}</dd>
-        </div>
-      ))}
-      {perf.droppedSeconds > 0 && (
-        <div className="perf__row perf__row--warn">
-          <dt>Dropped</dt>
-          <dd>{format(perf.droppedSeconds * 1000)} ms sim time</dd>
-        </div>
+    <section className="panel perf" aria-label="Performance diagnostics">
+      <div className="perf__headline">
+        <span className={`perf__fps ${fpsClass}`}>{perf ? fixed(perf.fps) : '–'}</span>
+        <span className="perf__unit">FPS</span>
+        <span className="perf__frame">{perf ? `${fixed(perf.frameMs, 1)} ms` : ''}</span>
+      </div>
+      <FrameTimeGraph engine={engine} />
+      {perf && (
+        <dl className="perf__rows">
+          <dt>Worst frame</dt>
+          <dd>{fixed(perf.worstFrameMs, 1)} ms</dd>
+          <dt>CPU / frame</dt>
+          <dd>{fixed(perf.cpuMs, 2)} ms</dd>
+          <dt>Sim steps</dt>
+          <dd>
+            {fixed(perf.stepsPerSecond)} / {physicsHz} Hz
+          </dd>
+          <dt>Draw calls</dt>
+          <dd>{perf.drawCalls}</dd>
+          <dt>Triangles</dt>
+          <dd>{perf.triangles.toLocaleString()}</dd>
+          <dt>GPU memory</dt>
+          <dd>
+            {perf.geometries} geo · {perf.textures} tex
+          </dd>
+          {perf.droppedSeconds > 0 && (
+            <>
+              <dt className="perf__value--warn">Sim behind</dt>
+              <dd className="perf__value--warn">{fixed(perf.droppedSeconds * 1000)} ms dropped</dd>
+            </>
+          )}
+        </dl>
       )}
-    </dl>
+    </section>
   );
 }

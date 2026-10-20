@@ -1,2 +1,3 @@
-export type { CameraModeId } from '@/render';
-export { Engine, type EngineEvents, type EngineOptions } from './Engine';
+export type { CameraModeId, GpuInfo, RenderErrorCode } from '@/render';
+export { RenderInitError } from '@/render';
+export { Engine, type EngineEvents, type EngineOptions, type FrameHistory } from './Engine';
